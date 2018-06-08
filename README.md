@@ -1,3 +1,3 @@
-# deep dreaming
+# machine dreaming
 
 messing around with deep learning code.
