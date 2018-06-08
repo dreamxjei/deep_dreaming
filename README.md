@@ -1,4 +1,3 @@
-# hello-world
-justfollowingtutorialproject
+# deep dreaming
 
-A minute later, I'm still following the tutorialProject.
+messing around with deep learning code.
