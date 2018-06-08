@@ -1,3 +1,3 @@
-# train track by mxj for deep dreaming
+# train track by mxj
 
 # lorem ipsum training file for after dataset files have been read.

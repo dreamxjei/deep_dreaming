@@ -1,4 +1,4 @@
-# data track by mxj for deep dreaming
+# data track by mxj
 
 # a separate file to make reading specific data folders easier
 
