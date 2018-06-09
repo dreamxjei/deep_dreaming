@@ -72,6 +72,5 @@ class importData():
                     self.sample_paths.append((img_path, class_num))
 
 
-
 if __name__ == '__main__':
     print('Main called')
