@@ -48,8 +48,8 @@ def main():
             load_file = 'weights_resnet18/resnet18_weights/' + weightslist[weightfile]
             val_data_transform = transforms.Compose([
               transforms.ToPILImage(),
-              # transforms.Resize((256, 256)),
-              # transforms.CenterCrop(224),
+              transforms.Resize((256, 256)),
+              transforms.CenterCrop(224),
               transforms.ToTensor(),
               # transforms.Normalize(mean=[0.485, 0.456, 0.406],
               #                      std=[0.229, 0.224, 0.225]),
@@ -145,7 +145,7 @@ def main():
 
 
 def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile):
-    batch_size=10
+    batch_size = 10
     model.load_state_dict(torch.load(os.path.join('./', load_file)))
     radio_val = importData(mode='test', transform=val_data_transform)
     radio_data_loader = DataLoader(radio_val, batch_size=batch_size, shuffle=True, num_workers=2)
@@ -220,6 +220,12 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile):
     print('---------  total: {:03d} -----------'.format(total))
     print('---------  accuracy: {:.4f} -----------'.format(float(running_corrects)/total))
 
+    output = open('output' + str(weightfile) + '.txt', 'w')
+
+    output.write('---------  correct: {:03d} -----------'.format(running_corrects) + "\n")
+    output.write('---------  total: {:03d} -----------'.format(total) + "\n")
+    output.write('---------  accuracy: {:.4f} -----------'.format(float(running_corrects)/total) + "\n")
+
     y_true = np.concatenate(y_true, 0)
     y_true2 = np.zeros((y_true.shape[0], 2))
     for column in range(y_true2.shape[1]):
@@ -262,15 +268,27 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile):
     auc_score = metrics.roc_auc_score(y_true[:, 1], y_score[:, 1])
     print('auc_score: ', auc_score)
 
-    sensitivity  = TP / (TP + FN)
-    specificity  = TN / (TN + FP)
+    sensitivity = TP / (TP + FN)
+    specificity = TN / (TN + FP)
     pos_like_ratio = sensitivity / (1 - specificity)
     neg_like_ratio = (1 - sensitivity) / specificity
     pos_pred_val = TP / (TP + FP)
     neg_pred_val = TN / (TN + FN)
 
-    print('sensitivity: %f\nspecificity: %f\npositive likelihood value: %f\nnegative likelihood value: %f\npositive predictive value: %f\nnegative predictive value: %f\nTP: %f\nTN: %f\nFP: %f\nFN: %f'
-            % (sensitivity, specificity, pos_like_ratio, neg_like_ratio, pos_pred_val, neg_pred_val, TP, TN, FP, FN))
+    print('sensitivity: %f\nspecificity:'
+          '%f\npositive likelihood value: %f\nnegative likelihood value:'
+          '%f\npositive predictive value: %f\nnegative predictive value:'
+          '%f\nTP: %f\nTN: %f\nFP: %f\nFN: %f'
+          % (sensitivity, specificity, pos_like_ratio, neg_like_ratio, pos_pred_val, neg_pred_val, TP, TN, FP, FN))
+
+    output.write(
+        'sensitivity: %f\nspecificity:'
+        '%f\npositive likelihood value: %f\nnegative likelihood value:'
+        '%f\npositive predictive value: %f\nnegative predictive value:'
+        '%f\nTP: %f\nTN: %f\nFP: %f\nFN: %f'
+        % (sensitivity, specificity, pos_like_ratio, neg_like_ratio, pos_pred_val, neg_pred_val, TP, TN, FP, FN))
+    output.close()
+
 
 if __name__ == '__main__':
     main()
