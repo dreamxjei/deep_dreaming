@@ -26,7 +26,7 @@ result_classes = {
 }
 
 
-class importData():
+class importData(Dataset):
     def __init__(self, mode, transform=None):
         """
         Args:
@@ -39,7 +39,7 @@ class importData():
     def __len__(self):
         return len(self.sample_paths)
 
-    def __getitem_(self, idx):
+    def __getitem__(self, idx):
         img_path, label = self.sample_paths[idx]
         x = io.imread(img_path)
 
@@ -60,15 +60,15 @@ class importData():
         return(x, label)
 
     def _init(self, mode):
-        dir_0 = os.path.join(dataset_dir, directories[mode + '_0'])
-        dir_1 = os.path.join(dataset_dir, directories[mode + '_1'])
+        subdir = {}
 
         # Result class iteration
         for class_num in result_classes:
-            samples = os.listdir('dir_' + str(class_num))
+            subdir[class_num] = os.path.join(dataset_dir, directories[mode + '_' + str(class_num)])
+            samples = os.listdir(subdir[class_num])
             for sample in samples:
                 if not sample.startswith('.'):  # avoid .DS_Store
-                    img_path = os.path.join('dir_' + str(class_num), sample)
+                    img_path = os.path.join(subdir[class_num], sample)
                     self.sample_paths.append((img_path, class_num))
 
 

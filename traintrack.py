@@ -19,7 +19,7 @@ import time
 import argparse
 
 from modeltrack import ResNet18_pretrained, inception_v3_pretrained, AlexNet_pretrained, SqueezeNet_pretrained, VGGNet_pretrained, DenseNet_pretrained
-from datatrack import THADataset
+from datatrack import importData
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-n', '--network',
@@ -47,6 +47,7 @@ momentum = 0.9
 class_weights = None
 if use_gpu and class_weights is not None:
     class_weights = class_weights.cuda().float()
+
 
 def main():
     # model
@@ -132,8 +133,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=num_epochs):
             #                      std=[0.21329397, 0.215493, 0.21677108]),
         ])
 
-    radio_train = THADataset(train='train', transform=train_data_transform)
-    radio_val = THADataset(train='val', transform=val_data_transform)
+    radio_train = importData(mode='train', transform=train_data_transform)
+    radio_val = importData(mode='val', transform=val_data_transform)
 
     dataloaders = {
         'train': DataLoader(radio_train, batch_size=batch_size, shuffle=True, num_workers=2),
