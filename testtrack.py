@@ -220,7 +220,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile):
     print('---------  total: {:03d} -----------'.format(total))
     print('---------  accuracy: {:.4f} -----------'.format(float(running_corrects)/total))
 
-    output = open('output' + str(weightfile) + '.txt', 'w')
+    output = open('test_result' + str(weightfile) + '.txt', 'w')
 
     output.write('---------  correct: {:03d} -----------'.format(running_corrects) + "\n")
     output.write('---------  total: {:03d} -----------'.format(total) + "\n")

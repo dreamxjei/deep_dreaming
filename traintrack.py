@@ -142,6 +142,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=num_epochs):
     }
 
     # TRAIN ROUTINE
+    output = open('train_result.txt', 'w')
     since = time.time()
     best_model_wts = model.state_dict()
     best_acc = 0.0
@@ -153,6 +154,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=num_epochs):
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
+        output.write('Epoch {}/{}'.format(epoch, num_epochs - 1) + "\n")
+        output.write('-' * 10 + "\n")
 
         epoch_info = [0] * 4
         # Each epoch has a training and validation phase
@@ -215,12 +218,22 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=num_epochs):
                                                                                   running_corrects / (
                                                                                               count * batch_size)),
                       end='\r')
+                output.write('{:d}/{:d}:  {:s}_loss: {:.3f}, {:s}_acc: {:.3f} \r'.format(batch_size * count,
+                                                                                         batch_size * dataset_size,
+                                                                                         phase,
+                                                                                         running_loss / count,
+                                                                                         phase,
+                                                                                         running_corrects / (
+                                                                                                 count * batch_size))
+                             )
                 sys.stdout.flush()
 
             epoch_loss = running_loss / dataset_size
             epoch_acc = float(running_corrects) / (count * batch_size)
 
             print('---------  {} Loss: {:.4f} Acc: {:.4f} -----------'.format(phase, epoch_loss, epoch_acc))
+            output.write(
+                '---------  {} Loss: {:.4f} Acc: {:.4f} -----------'.format(phase, epoch_loss, epoch_acc) + "\n")
 
             # deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
@@ -241,6 +254,10 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=num_epochs):
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
     print('Best val Acc: {:4f}'.format(best_acc))
+    output.write('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60))
+    output.write('Best val Acc: {:4f}'.format(best_acc))
+    output.close()
 
     # load best model weights
     model.load_state_dict(best_model_wts)
