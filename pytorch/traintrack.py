@@ -21,6 +21,7 @@ import argparse
 from modeltrack import ResNet18_pretrained, inception_v3_pretrained, AlexNet_pretrained, SqueezeNet_pretrained, VGGNet_pretrained, DenseNet_pretrained
 from datatrack import importData
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-n', '--network',
     choices=['resnet18', 'inception_v3', 'alexnet', 'squeezenet', 'vggnet', 'densenet'], default='resnet18',
