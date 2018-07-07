@@ -4,4 +4,7 @@ def merge_sort():
     len(test_list)/2
 
 
-merge_sort()
+# x = [8, 3, 6, 9, 1, 10, 4]
+user_input = input('Specify a list of numbers separated by spaces to sort: ')
+x = [int(n) for n in user_input.split()]
+merge_sort(x)
