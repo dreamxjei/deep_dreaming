@@ -1,7 +1,7 @@
-def merge_sort():
+def merge_sort(list):
     print('lorem ipsum')
-    test_list = [10, 8, 2, 3, 5, 1, 4, 7, 6, 9]
-    len(test_list)/2
+    list = [10, 8, 2, 3, 5, 1, 4, 7, 6, 9]
+    len(list)/2
 
 
 # x = [8, 3, 6, 9, 1, 10, 4]
