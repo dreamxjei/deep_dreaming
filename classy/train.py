@@ -28,31 +28,27 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-n', '--network',
-    choices=['resnet18', 'resnet50', 'resnet152', 'resnext101', 'wide_resnet101', 'inception_v3', 'alexnet', 'squeezenet', 'vggnet', 'densenet', 'efficientnet_b7', 'regnet_x_32gf'], default='resnet152',
+    choices=['resnet18', 'resnet50', 'resnet152', 'resnext101', 'wide_resnet101', 'inception_v3', 'alexnet', 'squeezenet', 'vggnet', 'densenet', 'efficientnet_b7', 'regnet_x_32gf'], default='resnet18',
     help='Choose which neural network to use')
 args = parser.parse_args()
 network = args.network
 
-
-result_classes = {
-    0: 'lorem_ipsum',
-    1: 'lorem_ipsum',
-    2: 'lorem_ipsum'
-}
-
-
-############ training ############
-## LOG
-weight_out_dir = (args.network + '_weights')
-use_gpu = torch.cuda.is_available()
-
 ## TRAIN PARAMS
-n_classes = len(list(result_classes.keys()))
+n_classes = 2
 L2_weight_decay = 1e-5
 batch_size = 5  # use 10 if enough memory
 num_epochs = 50
 lr = 0.001
 momentum = 0.9
+
+results_dir = 'results'
+if not os.path.exists(results_dir):
+    os.makedirs(results_dir)
+
+############ training ############
+## LOG
+weight_out_dir = (args.network + '_weights')
+use_gpu = torch.cuda.is_available()
 
 class_weights = None
 if use_gpu and class_weights is not None:
@@ -120,6 +116,7 @@ def main():
 
     model = train_model(model, criterion, optimizer, exp_lr_scheduler, network, num_epochs=num_epochs)
 
+
 def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_epochs):
     if args.network == 'resnet18' or args.network == 'resnet50'or args.network == 'resnet152' or args.network == 'resnext101' or args.network == 'wide_resnet101' or args.network == 'alexnet' or args.network == 'squeezenet' or args.network == 'vggnet' or args.network == 'densenet' or args.network == 'efficientnet_b7' or args.network == 'regnet_x_32gf':
         train_data_transform = transforms.Compose([
@@ -182,9 +179,8 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
         'val': DataLoader(radio_val, batch_size=batch_size, shuffle=True, num_workers=2)
     }
 
-
     ##### TRAIN ROUTINE
-    output = open('train_result_' + network + '.txt', 'w')
+    output = open(os.path.join(results_dir, 'train_result_' + network + '.txt'), 'w')
     since = time.time()
     best_model_wts = model.state_dict()
     best_acc = 0.0
@@ -217,7 +213,7 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
 
             for data in dataloaders[phase]:
                 # get the inputs
-                inputs, labels = data
+                inputs, labels, filenames = data
                 if use_gpu:
                     inputs = Variable(inputs.cuda()).float()
                     labels = Variable(labels.cuda()).long()
@@ -307,4 +303,3 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
 
 if __name__ == '__main__':
     main()
-

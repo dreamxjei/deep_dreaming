@@ -11,7 +11,7 @@ from torchvision import transforms
 result_classes = {
     0: 'no_THA',
     1: 'yes_THA',
-    2: 'yes_HRA'
+    # 2: 'yes_HRA'
 }
 
 dataset_dir = 'dataset'
@@ -77,7 +77,7 @@ class read_dataset(Dataset):
         # print('dataloader: img min is:',np.amin(x))
         # print('dataloder: img max is:',np.amax(x))
  
-        # in order to make sure we have images in uint8
+        # in order to make sure we have all images in uint8
         if x.dtype != np.uint8:
             x = x.astype(np.uint8)
 
@@ -96,7 +96,7 @@ class read_dataset(Dataset):
         
         x = normalize_img(x)
     
-        return (x, label)
+        return (x, label, img_path)
 
     def _init(self, mode):
         subdir = {}
@@ -113,16 +113,3 @@ class read_dataset(Dataset):
 
 if __name__ == '__main__':
     print('Test codes are commented out')
-    # dataset = THADataset('test')
-    # dataset = THADataset('val')
-    # dataset = THADataset('train')
-    # for idx in range(dataset.__len__()):
-    # print(idx)
-    # x, label = dataset.__getitem__(idx)
-    # print(type(x))
-    # print(x.dtype)
-    # if x.dtype == np.uint16:
-    #   print(x.dtype)
-    #   x = x.astype(np.uint8)
-    #   print(x.dtype)
-    # print(x)

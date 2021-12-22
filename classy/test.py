@@ -30,20 +30,27 @@ from test_statistics import roc_auc_metrics
 import argparse
 from sklearn import metrics
 
+import pandas as pd
+import seaborn as sns
+import scipy.stats as st
+
+
+# name classes - for confusion matrix etc, can be different from dataloader classes
+result_classes = {
+        0: 'no_THA',
+        1: 'yes_THA',
+        # 2: 'yes_HRA'
+    }
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--network',
-        choices=['resnet18', 'resnet50', 'resnet152', 'resnext101', 'wide_resnet101', 'inception_v3', 'alexnet', 'squeezenet', 'vggnet', 'densenet', 'efficientnet_b7', 'regnet_x_32gf'], default='resnet152',
+        choices=['resnet18', 'resnet50', 'resnet152', 'resnext101', 'wide_resnet101', 'inception_v3', 'alexnet', 'squeezenet', 'vggnet', 'densenet', 'efficientnet_b7', 'regnet_x_32gf'], default='resnet18',
         help='Choose which neural network to use')
     args = parser.parse_args()
     network = args.network
 
-    result_classes = {
-        0: 'lorem_ipsum',
-        1: 'lorem_ipsum',
-        2: 'lorem-ipsum'
-    }
     n_classes = len(result_classes)
 
     # model
@@ -131,6 +138,10 @@ def main():
 def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, network):
     batch_size=10
 
+    results_dir = 'results'
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+
     if use_gpu:
         print('Using ' + str(torch.cuda.device_count()) + ' GPU(s)')
         if torch.cuda.device_count() > 1:
@@ -161,8 +172,9 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     y_score = []
     total_labels = []  # for confusion matrix - ground truth
     total_preds = []  # for confusion matrix - preds
+    wrong_filenames = []
     for data in radio_data_loader:
-        inputs, labels = data
+        inputs, labels, filenames = data
         labels_np = labels.clone().detach().cpu().numpy()
         total_labels.append(labels_np)
 
@@ -210,24 +222,42 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
             plt.show()
             # print('here', idx)
         """
-    
-    if n_classes < 3:
-        calc_stats(y_true, y_score, n_classes)
 
+        # append wrong files
+        for idx in range(len(original)):  # first dimension of tensor, usually = batch_size
+            if (preds != labels.data)[idx]:
+                wrong_filenames.append(filenames[idx])
+
+    # truncate weightfile for result filenames
+    wf_only = weightfile.split('_')[0]
+
+    # save wrong files to csv
+    df_wrongs = pd.DataFrame(list(zip(wrong_filenames)),
+                             columns=['wrong_filenames'])
+    df_wrongs_output_path = os.path.join(results_dir, network + '_wrong_filenames_' + str(wf_only) + '.csv')
+    df_wrongs.to_csv(df_wrongs_output_path, index=False)
+
+    # print results in console/testing result file
     print('---------  correct: {:03d} -----------'.format(running_corrects))
     print('---------  total: {:03d} -----------'.format(total))
     print('---------  accuracy: {:.4f} -----------'.format(float(running_corrects)/total))
 
-    output = open('test_result_' + network + '_'  + str(weightfile) + '.txt', 'w')
+    output = open(os.path.join(results_dir, 'test_result_' + network + '_'  + str(wf_only) + '.txt'), 'w')
 
     output.write('---------  correct: {:03d} -----------'.format(running_corrects) + "\n")
     output.write('---------  total: {:03d} -----------'.format(total) + "\n")
     output.write('---------  accuracy: {:.4f} -----------'.format(float(running_corrects) / total) + "\n")
 
     if n_classes < 3:  # roc/auc for binary output
-        auc_score = roc_auc_metrics(y_true, y_score, n_classes, weightfile, network)  # call statistics file for roc/auc
-        print('auc_score: ', auc_score)
+        auc_score, opt_jstats, opt_thresholds = roc_auc_metrics(y_true, y_score, n_classes, wf_only, network, results_dir)  # call statistics file for roc/auc
+        print('auc_score:', auc_score)
         output.write('auc_score: ' + str(auc_score) + '\n')
+        print('Optimal Youden\'s J Statistic:', opt_jstats[1])
+        output.write('optimal_youden\'s_jstat : ' + str(opt_jstats[1]) + '\n')
+        print('Optimal threshold:', opt_thresholds[1])
+        output.write('optimal_threshold :' + str(opt_thresholds[1]) + '\n')
+
+        calc_stats(y_true, y_score, result_classes, n_classes, opt_thresholds, output)
     
     sensitivity  = TP / (TP + FN)
     specificity  = TN / (TN + FP)
@@ -262,9 +292,21 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     conf_m = metrics.confusion_matrix(confusion_labels, confusion_preds)
     print(conf_m)
 
+    # save conf_m as seaborn heatmap
+    result_classes_names = list(result_classes.values())
+    cm_df = pd.DataFrame(conf_m, result_classes_names, result_classes_names)
+    plt.figure()
+    sns.heatmap(cm_df, annot=True, square=True)
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('Ground Truth')
+    cm_savepath = os.path.join(results_dir, network + '_conf_mat_' + str(wf_only) + '.png')
+    plt.savefig(cm_savepath)
 
+
+'''
 def calc_threshold(y_true, y_score):
-    # Calculate ideal threshold, that gives best f-beta
+    # Calculate ideal threshold, that gives best f-beta - now use youden's j stat instead
     pre, rec, thresholds = metrics.precision_recall_curve(y_true, y_score)
     
     # ignore 0 p and r records
@@ -274,18 +316,40 @@ def calc_threshold(y_true, y_score):
     fm = np.argmax(f1)
     f1, threshold = f1[fm], thresholds[fm]
     return threshold
+'''
 
-def calc_stats(y_true, y_score, n_classes):
+
+def calc_stats(y_true, y_score, result_classes, n_classes, opt_thresholds, output):
     y_true = np.concatenate(y_true)
     y_score = np.concatenate(y_score)[:,1]
-    thresh = calc_threshold(y_true, y_score)
+    # thresh = calc_threshold(y_true, y_score)  # for f1
+    thresh = opt_thresholds[1]
     predictions = y_score > thresh
     accuracy = metrics.accuracy_score(y_true, predictions)
     precision, recall, f_beta, _ = metrics.precision_recall_fscore_support(y_true, predictions, average='binary')
     print('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta))
+    output.write('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta) + '\n')
+
+    # confidence intervals (z= {1.64: 90%, 1.96: 95%, 2.33: 98%, 2.58: 99%})
+    ci_range = 0.95
+    z_choices = {0.9: 1.64, 0.95: 1.96, 0.98: 2.33, 0.99: 2.58}
+    z = z_choices[ci_range]
+
+    # quick hack to get sample size
+    sample_size = 0
+    datadir = os.path.join('dataset', 'test')
+    for idx in result_classes:
+        idx_class = result_classes[idx]
+        idx_dir = os.path.join(datadir, idx_class)
+        sample_size += len(os.listdir(idx_dir))
+
+    n = sample_size
+
+    # CI radius calculation: for error, just replace accuracy with error
+    interval = z * np.sqrt( (accuracy * (1 - accuracy)) / n)
+    print(str(int(ci_range*100)) + r'% Confidence Interval:', str(accuracy - interval), 'to', str(accuracy + interval))
+    output.write(str(int(ci_range*100)) + r'% Confidence Interval: ' + str(accuracy - interval) + ' to ' + str(accuracy + interval) + '\n')
 
 
 if __name__ == '__main__':
     main()
-
-

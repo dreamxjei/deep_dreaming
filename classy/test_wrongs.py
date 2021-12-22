@@ -215,7 +215,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     output.write('---------  accuracy: {:.4f} -----------'.format(float(running_corrects) / total) + "\n")
 
     if n_classes < 3:  # roc/auc for binary output
-        auc_score = roc_auc_metrics(y_true, y_score, n_classes, weightfile, network)  # call statistics file for roc/auc
+        auc_score = roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir)  # call statistics file for roc/auc
         print('auc_score: ', auc_score)
         output.write('auc_score: ' + str(auc_score) + '\n')
     

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
+import os
 import matplotlib
 matplotlib.use('Agg') # Added for display errors
 from matplotlib import pyplot as plt
@@ -9,7 +10,7 @@ import numpy as np
 from sklearn import metrics
 
 
-def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network):
+def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir):
     y_true = np.concatenate(y_true, 0)
     y_true2 = np.zeros((y_true.shape[0], 2))
     for column in range(y_true2.shape[1]):
@@ -25,29 +26,41 @@ def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network):
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
+    thresholds = dict()
+
+    j_stats = [None]*n_classes
+    opt_jstats = [None]*n_classes
+    opt_thresholds = [None]*n_classes
+
     for i in range(n_classes):
-        fpr[i], tpr[i], _ = metrics.roc_curve(y_true[:, i], y_score[:, i])
+        fpr[i], tpr[i], thresholds[i] = metrics.roc_curve(y_true[:, i], y_score[:, i])
         roc_auc[i] = metrics.auc(fpr[i], tpr[i])
+
+        # Youden's J Statistic
+        j_stats[i] = tpr[i] - fpr[i]
+        max_j_idx = np.argmax(j_stats[i])
+        opt_thresholds[i] = thresholds[i][max_j_idx]
+        opt_jstats[i] = j_stats[i][max_j_idx]
 
     # # Compute micro-average ROC curve and ROC area
     # fpr["micro"], tpr["micro"], _ = metrics.roc_curve(y_test.ravel(), y_score.ravel())
     # roc_auc["micro"] = metrics.auc(fpr["micro"], tpr["micro"])
 
-    plt.figure()
+    fig, ax = plt.subplots()
     lw = 2
-    plt.plot(fpr[1], tpr[1], color='darkorange',
+    ax.plot(fpr[1], tpr[1], color='darkorange',
              lw=lw, label='ROC curve (area = %0.2f)' % roc_auc[1])
-    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    ax.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('1-Specificity')
-    plt.ylabel('Sensitivity')
-    plt.title('Receiver operating characteristic example')
-    plt.legend(loc="lower right")
-    plt.show()
-    plt.savefig('roc_' + network + '_' + str(weightfile) + '.png')
+    ax.set_xlim([-0.05, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_aspect('equal', 'box')
+    ax.set_xlabel('False Positive Rate: 1 - Specificity')
+    ax.set_ylabel('True Positive Rate: Sensitivity')
+    ax.set_title('Receiver Operating Characteristic')
+    ax.legend(loc="lower right")
+    fig.savefig(os.path.join(results_dir, 'roc_' + network + '_' + str(weightfile) + '.png'))
 
     auc_score = metrics.roc_auc_score(y_true[:, 1], y_score[:, 1])
     # print('auc_score: ', auc_score)
-    return auc_score
+    return auc_score, opt_jstats, opt_thresholds
