@@ -42,6 +42,9 @@ result_classes = {
         # 2: 'yes_HRA'
     }
 
+thresh_methods = ['youden', 'exclusive']
+thresh_method = thresh_methods[0]
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -137,6 +140,8 @@ def main():
 
 def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, network):
     batch_size=10
+    # truncate weightfile for result filenames
+    wf_only = weightfile.split('_')[0]
 
     results_dir = 'results'
     if not os.path.exists(results_dir):
@@ -175,8 +180,6 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     wrong_filenames = []
     for data in radio_data_loader:
         inputs, labels, filenames = data
-        labels_np = labels.clone().detach().cpu().numpy()
-        total_labels.append(labels_np)
 
         """
         # show first images of the batch
@@ -194,21 +197,48 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         local_y_score = F.softmax(outputs, 1)
 
         if use_gpu:
-            y_score.append(local_y_score.data.cpu().numpy())
-            y_true.append(labels.data.cpu().numpy())
+            # y_score.append(local_y_score.data.cpu().numpy())
+            # y_true.append(labels.data.cpu().numpy())
+            local_y_score = local_y_score.clone().detach().cpu().numpy()
+            y_true.append(labels.clone().detach().cpu().numpy())
+            labels_np = labels.clone().detach().cpu().numpy()
+            
         else:
-            y_score.append(local_y_score.data.numpy())
-            y_true.append(labels.data.numpy())
+            # y_score.append(local_y_score.data.numpy())
+            # y_true.append(labels.data.numpy())
+            local_y_score = local_y_score.clone().detach().numpy()
+            y_true.append(labels.clone().detach().numpy())
+            labels_np = labels.clone().detach().numpy()
 
-        _, preds = torch.max(outputs.data, 1)
-        total_preds.append(preds.clone().detach().cpu().numpy())
+        y_score.append(local_y_score)
+        total_labels.append(labels_np)
+
+        if thresh_method == 'exclusive':
+            # for mutually exclusive tasks only. obsolete?
+            _, preds = torch.max(outputs.data, 1)
+            total_preds.append(preds.clone().detach().cpu().numpy())
+            running_corrects += torch.sum(preds == labels.data)
+            preds = preds.float().cpu().numpy()
+            labels = labels.data.float().cpu().numpy()
+
+        if n_classes < 3 and thresh_method == 'youden':  # roc/auc for binary output
+            # call statistics file for roc/auc
+            auc_score, opt_jstats, opt_thresholds = roc_auc_metrics(y_true, y_score, n_classes, wf_only, network, results_dir)
+            thresh = opt_thresholds[1]
+
+            # classify based on whether or not class 1 (yes) beats threshold
+            preds = local_y_score >= thresh  # one hot predictions
+            preds = np.argmax(preds, axis=1)  # change one hot preds to class numbers
+            total_preds.append(preds)
+            if use_gpu:
+                labels = labels.clone().detach().cpu().numpy()
+            else:
+                labels = labels.clone().detach().numpy()
+
+            running_corrects += np.sum(preds == labels)
 
         # statistics
-        running_corrects += torch.sum(preds == labels.data)
-
         # ROC curve analysis
-        preds = preds.float().cpu().numpy()
-        labels = labels.data.float().cpu().numpy()
         TP += np.sum(np.logical_and(preds == 1.0, labels == 1.0))
         TN += np.sum(np.logical_and(preds == 0.0, labels == 0.0))
         FP += np.sum(np.logical_and(preds == 1.0, labels == 0.0))
@@ -225,11 +255,8 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
 
         # append wrong files
         for idx in range(len(original)):  # first dimension of tensor, usually = batch_size
-            if (preds != labels.data)[idx]:
+            if (preds != labels)[idx]:
                 wrong_filenames.append(filenames[idx])
-
-    # truncate weightfile for result filenames
-    wf_only = weightfile.split('_')[0]
 
     # save wrong files to csv
     df_wrongs = pd.DataFrame(list(zip(wrong_filenames)),
@@ -249,7 +276,6 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     output.write('---------  accuracy: {:.4f} -----------'.format(float(running_corrects) / total) + "\n")
 
     if n_classes < 3:  # roc/auc for binary output
-        auc_score, opt_jstats, opt_thresholds = roc_auc_metrics(y_true, y_score, n_classes, wf_only, network, results_dir)  # call statistics file for roc/auc
         print('auc_score:', auc_score)
         output.write('auc_score: ' + str(auc_score) + '\n')
         print('Optimal Youden\'s J Statistic:', opt_jstats[1])
@@ -266,16 +292,16 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     pos_pred_val = TP / (TP + FP)
     neg_pred_val = TN / (TN + FN)
 
-    print('sensitivity: %f\nspecificity:'
-          '%f\npositive likelihood value: %f\nnegative likelihood value:'
-          '%f\npositive predictive value: %f\nnegative predictive value:'
+    print('sensitivity: %f\nspecificity: '
+          '%f\npositive likelihood value: %f\nnegative likelihood value: '
+          '%f\npositive predictive value: %f\nnegative predictive value: '
           '%f\nTP: %f\nTN: %f\nFP: %f\nFN: %f'
           % (sensitivity, specificity, pos_like_ratio, neg_like_ratio, pos_pred_val, neg_pred_val, TP, TN, FP, FN))
 
     output.write(
-        'sensitivity: %f\nspecificity:'
-        '%f\npositive likelihood value: %f\nnegative likelihood value:'
-        '%f\npositive predictive value: %f\nnegative predictive value:'
+        'sensitivity: %f\nspecificity: '
+        '%f\npositive likelihood value: %f\nnegative likelihood value: '
+        '%f\npositive predictive value: %f\nnegative predictive value: '
         '%f\nTP: %f\nTN: %f\nFP: %f\nFN: %f'
         % (sensitivity, specificity, pos_like_ratio, neg_like_ratio, pos_pred_val, neg_pred_val, TP, TN, FP, FN))
     output.close()
@@ -324,7 +350,8 @@ def calc_stats(y_true, y_score, result_classes, n_classes, opt_thresholds, outpu
     y_score = np.concatenate(y_score)[:,1]
     # thresh = calc_threshold(y_true, y_score)  # for f1
     thresh = opt_thresholds[1]
-    predictions = y_score > thresh
+    # thresh = 0.5
+    predictions = y_score >= thresh
     accuracy = metrics.accuracy_score(y_true, predictions)
     precision, recall, f_beta, _ = metrics.precision_recall_fscore_support(y_true, predictions, average='binary')
     print('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta))
