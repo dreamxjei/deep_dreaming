@@ -93,7 +93,7 @@ def main():
 
     ############ testing ############
     use_gpu = torch.cuda.is_available()
-    if args.network == 'resnet18' or args.network == 'resnet50' or args.network == 'resnet152' or args.network == 'alexnet' or args.network == 'squeezenet' or args.network == 'vggnet' or args.network == 'densenet':
+    if args.network == 'resnet18' or args.network == 'resnet50' or args.network == 'resnet152' or args.network == 'resnext101' or args.network == 'wide_resnet101' or args.network == 'alexnet' or args.network == 'squeezenet' or args.network == 'vggnet' or args.network == 'densenet' or args.network == 'efficientnet_b7' or args.network == 'regnet_x_32gf':
         weightslist = os.listdir('weights/' + network + '_weights/')
         weightslist.sort()
         weightsnum = len(weightslist)
