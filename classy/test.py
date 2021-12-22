@@ -37,8 +37,8 @@ import scipy.stats as st
 
 # name classes - for confusion matrix etc, can be different from dataloader classes
 result_classes = {
-        0: 'no',
-        1: 'yes',
+        0: 'no_THA',
+        1: 'yes_THA',
         # 2: 'yes_HRA'
     }
 
