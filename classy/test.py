@@ -37,8 +37,8 @@ import scipy.stats as st
 
 # name classes - for confusion matrix etc, can be different from dataloader classes
 result_classes = {
-        0: 'no_THA',
-        1: 'yes_THA',
+        0: 'no',
+        1: 'yes',
         # 2: 'yes_HRA'
     }
 
@@ -283,7 +283,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         print('Optimal threshold:', opt_thresholds[1])
         output.write('optimal_threshold :' + str(opt_thresholds[1]) + '\n')
 
-        calc_stats(y_true, y_score, result_classes, n_classes, opt_thresholds, output)
+        calc_stats(total_labels, total_preds, result_classes, n_classes, opt_thresholds, output)
     
     sensitivity  = TP / (TP + FN)
     specificity  = TN / (TN + FP)
@@ -345,15 +345,14 @@ def calc_threshold(y_true, y_score):
 '''
 
 
-def calc_stats(y_true, y_score, result_classes, n_classes, opt_thresholds, output):
-    y_true = np.concatenate(y_true)
-    y_score = np.concatenate(y_score)[:,1]
+def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output):
+    labels = np.concatenate(labels)
+    preds = np.concatenate(preds)
     # thresh = calc_threshold(y_true, y_score)  # for f1
     thresh = opt_thresholds[1]
     # thresh = 0.5
-    predictions = y_score >= thresh
-    accuracy = metrics.accuracy_score(y_true, predictions)
-    precision, recall, f_beta, _ = metrics.precision_recall_fscore_support(y_true, predictions, average='binary')
+    accuracy = metrics.accuracy_score(labels, preds)
+    precision, recall, f_beta, _ = metrics.precision_recall_fscore_support(labels, preds, average='binary')
     print('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta))
     output.write('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta) + '\n')
 
