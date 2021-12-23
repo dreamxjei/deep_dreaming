@@ -283,7 +283,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         print('Optimal threshold:', opt_thresholds[1])
         output.write('optimal_threshold :' + str(opt_thresholds[1]) + '\n')
 
-        calc_stats(total_labels, total_preds, result_classes, n_classes, opt_thresholds, output)
+        calc_stats(total_labels, total_preds, result_classes, n_classes, opt_thresholds, output, auc_score)
     
     sensitivity  = TP / (TP + FN)
     specificity  = TN / (TN + FP)
@@ -345,7 +345,7 @@ def calc_threshold(y_true, y_score):
 '''
 
 
-def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output):
+def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output, auc_score):
     labels = np.concatenate(labels)
     preds = np.concatenate(preds)
     # thresh = calc_threshold(y_true, y_score)  # for f1
@@ -356,25 +356,42 @@ def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output)
     print('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta))
     output.write('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta) + '\n')
 
+    
     # confidence intervals (z= {1.64: 90%, 1.96: 95%, 2.33: 98%, 2.58: 99%})
     ci_range = 0.95
     z_choices = {0.9: 1.64, 0.95: 1.96, 0.98: 2.33, 0.99: 2.58}
     z = z_choices[ci_range]
 
-    # quick hack to get sample size
-    sample_size = 0
-    datadir = os.path.join('dataset', 'test')
-    for idx in result_classes:
-        idx_class = result_classes[idx]
-        idx_dir = os.path.join(datadir, idx_class)
-        sample_size += len(os.listdir(idx_dir))
+    '''
+    # initial method of CI - might be wrong
+    n = len(labels)
 
-    n = sample_size
-
-    # CI radius calculation: for error, just replace accuracy with error
+    # CI radius calculation for accuracy: for error, just replace accuracy with error
     interval = z * np.sqrt( (accuracy * (1 - accuracy)) / n)
-    print(str(int(ci_range*100)) + r'% Confidence Interval:', str(accuracy - interval), 'to', str(accuracy + interval))
-    output.write(str(int(ci_range*100)) + r'% Confidence Interval: ' + str(accuracy - interval) + ' to ' + str(accuracy + interval) + '\n')
+    print(str(int(ci_range*100)) + r'% Confidence Interval: ', str(accuracy - interval), 'to', str(accuracy + interval))
+    # output.write(str(int(ci_range*100)) + r'% Confidence Interval: ' + str(accuracy - interval) + ' to ' + str(accuracy + interval) + '\n')
+    '''
+
+    # confidence intervals
+    positive = 1
+    auc = auc_score
+    n1 = sum(labels == positive)
+    n2 = sum(labels != positive)
+    q1 = auc / (2 - auc)
+    q2 = 2*auc**2 / (1 + auc)
+    se_auc = np.sqrt((auc*(1-auc) + (n1 - 1)*(q1 - auc**2) + (n2 - 1)*(q2 - auc**2)) / (n1*n2))
+
+    lower = auc - z*se_auc
+    upper = auc + z*se_auc
+
+    if lower < 0:
+        lower = 0
+
+    if upper > 1:
+        upper = 1
+
+    print(str(int(ci_range*100)) + r'% Confidence Interval: ', lower, 'to', upper)
+    output.write(str(int(ci_range*100)) + r'% Confidence Interval: ' + str(lower) + ' to ' + str(upper) + '\n')
 
 
 if __name__ == '__main__':
