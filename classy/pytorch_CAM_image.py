@@ -11,7 +11,9 @@ import cv2
 
 import torch
 import os, sys
-from models import ResNet18_pretrained, ResNet50_pretrained, ResNet152_pretrained
+import models  # custom
+
+import argparse
 
 
 # input images
@@ -20,53 +22,69 @@ result_classes = {
     0: 'no',
     1: 'yes',
 }
-
-# image_file = os.listdir('cam')[0]
-
-# dataset_dir = 'dataset/100_20_30'
-# directories = {}
-# for class_num in result_classes:
-#     directories['train_' + str(class_num)] = result_classes[class_num] + '_train'
-#     directories['val_' + str(class_num)] = result_classes[class_num] + '_val'
-#     directories['test_' + str(class_num)] = result_classes[class_num] + '_test'
+n_classes = len(result_classes)
 
 ###  output directories
-output_dir = 'cam'
+output_dir = os.path.join('cam', results)
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 ###  choose model
-model_id = 4  # we are using ResNet152 by default
-if model_id == 1:
-    net = models.squeezenet1_1(pretrained=True)
+parser = argparse.ArgumentParser()
+parser.add_argument('-n', '--network',
+    choices=['resnet18', 'resnet50', 'resnet152', 'resnext101', 
+             'wide_resnet101', 'inception_v3', 'alexnet',
+             'squeezenet', 'vggnet', 'densenet',
+             'efficientnet_b7', 'regnet_x_32gf'], default='resnet18',
+     help='Choose which neural network to use')
+args = parser.parse_args()
+network = args.network
+
+if network == 'resnet18':
+    model = models.ResNet18_pretrained(n_classes, freeze=False)
+    finalconv_name = 'layer4'
+elif network == 'resnet50':
+    model = models.ResNet50_pretrained(n_classes, freeze=False) 
+    finalconv_name = 'layer4'
+elif network == 'resnet152':
+    model = models.ResNet152_pretrained(n_classes, freeze=False)
+    finalconv_name = 'layer4'
+elif network == 'resnext101':
+    model = models.ResNeXt101_pretrained(n_classes, freeze=False)
+    finalconv_name = 'layer4'
+elif network == 'wide_resnet101':
+    model = models.wide_resnet101_pretrained(n_classes, freeze=False)
+    finalconv_name = 'layer4'
+elif network == 'inception_v3':
+    model = models.inception_v3_pretrained(n_classes, freeze=False)
+    finalconv_name = 'Mixed_7c'
+elif network == 'alexnet':
+    model = models.AlexNet_pretrained(n_classes, freeze=False)
     finalconv_name = 'features'
-elif model_id == 2:
-    net = ResNet18_pretrained(2, freeze=False)
-    weightslist = os.listdir('weights/resnet18_weights')
-    weightsnum = len(weightslist) - 1
-    if weightslist[weightsnum].startswith('LOG'):  # avoid LOG.txt
-        weightsnum = weightsnum - 1
-    load_file = 'weights/resnet18_weights/' + weightslist[weightsnum]
-    net.load_state_dict(torch.load(os.path.join('./', load_file)))
-    finalconv_name = 'layer4'
-elif model_id == 3:
-    net = ResNet50_pretrained(2, freeze=False)
-    weightslist = os.listdir('weights/resnet50_weights')
-    weightsnum = len(weightslist) - 1
-    if weightslist[weightsnum].startswith('LOG'):  # avoid LOG.txt
-        weightsnum = weightsnum - 1
-    load_file = 'weights/resnet50_weights/' + weightslist[weightsnum]
-    net.load_state_dict(torch.load(os.path.join('./', load_file)))
-    finalconv_name = 'layer4'
-elif model_id == 4:
-    net = ResNet152_pretrained(6, freeze=False)
-    weightslist = os.listdir('weights/resnet152_weights')
-    weightsnum = len(weightslist) - 1
-    if weightslist[weightsnum].startswith('LOG'):  # avoid LOG.txt
-        weightsnum = weightsnum - 1
-    load_file = 'weights/resnet152_weights/' + weightslist[weightsnum]
-    net.load_state_dict(torch.load(os.path.join('./', load_file)))
-    finalconv_name = 'layer4'
+elif network == 'squeezenet':
+    model = models.SqueezeNet_pretrained(n_classes, freeze=False)
+    finalconv_name = 'features'
+elif network == 'vggnet':
+    model = models.VGGNet_pretrained(n_classes, freeze=False)
+    finalconv_name = 'features'
+elif network == 'densenet':
+    model = models.DenseNet_pretrained(n_classes, freeze=False)
+    finalconv_name = 'denseblock4'
+elif network == 'efficientnet_b7':
+    model = models.efficientnet_b7_pretrained(n_classes, freeze=False)
+    finalconv_name = '3'
+elif network == 'regnet_x_32gf':
+    model = models.regnet_x_32gf_pretrained(n_classes, freeze=False)
+    finalconv_name = 'block4'
+
+# load weight and network
+netweight_dir = network + 'weights'
+weightslist = os.listdir(os.path.join('weights', netweight_dir))
+weightsnum = len(weightslist) - 1
+if weightslist[weightsnum].startswith('LOG'):  # avoid LOG.txt
+    weightsnum = weightsnum - 1
+load_file = os.path.join('weights', netweight_dir, weightslist[weightsnum]
+net.load_state_dict(torch.load(os.path.join('./', load_file)))
 net.eval()
 
 ### preprocessing
@@ -169,7 +187,7 @@ for sample in samples:
 
     image_file = os.path.join(image_url, sample)
     img_pil = Image.open(image_file).convert('RGB')
-    img_pil.save(output_dir + '/' + img_name + '.jpg')
+    img_pil.save(os.path.join(output_dir, img_name + '.jpg'))
 
     img_tensor = preprocess(img_pil)
     img_variable = Variable(img_tensor.unsqueeze(0))
@@ -190,11 +208,11 @@ for sample in samples:
 
     # render the CAM and output
     # print('output CAM.jpg for the top1 prediction: %s'%classes[idx[0]])
-    img = cv2.imread(output_dir + '/' + img_name + '.jpg')
+    img = cv2.imread(os.path.join(output_dir, img_name + '.jpg'))
     height, width, _ = img.shape
     heatmap = cv2.applyColorMap(cv2.resize(CAMs[0],(width, height)), cv2.COLORMAP_JET)
     result = heatmap * 0.3 + img * 0.5
-    cv2.imwrite(output_dir + '/' + img_name + '_CAM' + '.jpg', result)
+    cv2.imwrite(os.path.join(output_dir, img_name + '_CAM' + '.jpg'), result)
 ################ REPETITION
 
 
