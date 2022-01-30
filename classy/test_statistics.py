@@ -59,7 +59,7 @@ def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir
     ax.set_ylabel('True Positive Rate: Sensitivity')
     ax.set_title('Receiver Operating Characteristic')
     ax.legend(loc="lower right")
-    fig.savefig(os.path.join(results_dir, 'roc_' + network + '_' + str(weightfile) + '.png'))
+    fig.savefig(os.path.join(results_dir, network + '_roc_' + str(weightfile) + '.png'))
 
     auc_score = metrics.roc_auc_score(y_true[:, 1], y_score[:, 1])
     # print('auc_score: ', auc_score)

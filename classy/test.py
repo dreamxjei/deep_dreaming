@@ -178,6 +178,14 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     total_labels = []  # for confusion matrix - ground truth
     total_preds = []  # for confusion matrix - preds
     wrong_filenames = []
+    all_inclusive_stats = {}
+    all_inclusive_stats['filename'] = []
+    all_inclusive_stats['label'] = []
+    all_inclusive_stats['class_pred'] = []
+    for idx in range(len(result_classes)):
+        all_inclusive_stats['raw_output_' + str(idx)] = []
+    all_inclusive_stats['wrong'] = []
+    
     for data in radio_data_loader:
         inputs, labels, filenames = data
 
@@ -202,6 +210,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
             local_y_score = local_y_score.clone().detach().cpu().numpy()
             y_true.append(labels.clone().detach().cpu().numpy())
             labels_np = labels.clone().detach().cpu().numpy()
+            raw_outputs_np = outputs.clone().detach().cpu().numpy()
             
         else:
             # y_score.append(local_y_score.data.numpy())
@@ -209,6 +218,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
             local_y_score = local_y_score.clone().detach().numpy()
             y_true.append(labels.clone().detach().numpy())
             labels_np = labels.clone().detach().numpy()
+            raw_outputs_np = outputs.clone().detach().numpy()
 
         y_score.append(local_y_score)
         total_labels.append(labels_np)
@@ -258,18 +268,44 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
             if (preds != labels)[idx]:
                 wrong_filenames.append(filenames[idx])
 
+        # append raw pred, softmax pred, and true labels for delong calculation
+        for idx in range(len(original)):  # first dimension of tensor, usually = batch_size
+            all_inclusive_stats['filename'].append(filenames[idx])
+            all_inclusive_stats['label'].append(labels[idx])
+            all_inclusive_stats['class_pred'].append(preds[idx])
+            for j in range(n_classes):
+                all_inclusive_stats['raw_output_' + str(j)].append(raw_outputs_np[idx][j])
+            if preds[idx] != labels[idx]:
+                all_inclusive_stats['wrong'].append(1)
+            else:
+                all_inclusive_stats['wrong'].append(0)
+
     # save wrong files to csv
     df_wrongs = pd.DataFrame(list(zip(wrong_filenames)),
                              columns=['wrong_filenames'])
     df_wrongs_output_path = os.path.join(results_dir, network + '_wrong_filenames_' + str(wf_only) + '.csv')
     df_wrongs.to_csv(df_wrongs_output_path, index=False)
 
+    # save all inclusive stats to csv
+    df_all_inclusive_stats = pd.DataFrame(
+        list(zip(
+        all_inclusive_stats['filename'],
+        all_inclusive_stats['label'],
+        all_inclusive_stats['class_pred'],
+        all_inclusive_stats['wrong']
+    )), columns=['filename', 'label', 'class_pred', 'wrong'])
+    for idx in range(n_classes):
+        df_all_inclusive_stats['raw_output_' + str(idx)] = all_inclusive_stats['raw_output_' + str(idx)]
+
+    df_all_inclusive_stats_output_path = os.path.join(results_dir, network + '_all_inclusive_stats_' + str(wf_only) + '.csv')
+    df_all_inclusive_stats.to_csv(df_all_inclusive_stats_output_path, index=False)
+
     # print results in console/testing result file
     print('---------  correct: {:03d} -----------'.format(running_corrects))
     print('---------  total: {:03d} -----------'.format(total))
     print('---------  accuracy: {:.4f} -----------'.format(float(running_corrects)/total))
 
-    output = open(os.path.join(results_dir, 'test_result_' + network + '_'  + str(wf_only) + '.txt'), 'w')
+    output = open(os.path.join(results_dir, network + '_test_result_' + str(wf_only) + '.txt'), 'w')
 
     output.write('---------  correct: {:03d} -----------'.format(running_corrects) + "\n")
     output.write('---------  total: {:03d} -----------'.format(total) + "\n")
