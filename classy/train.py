@@ -37,7 +37,7 @@ network = args.network
 n_classes = 2
 L2_weight_decay = 1e-5
 batch_size = 5  # use 10 if enough memory
-num_epochs = 50
+num_epochs = 10
 lr = 0.001
 momentum = 0.9
 
@@ -180,7 +180,7 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
     }
 
     ##### TRAIN ROUTINE
-    output = open(os.path.join(results_dir, 'train_result_' + network + '.txt'), 'w')
+    output = open(os.path.join(results_dir, network + '_train_result.txt'), 'w')
     since = time.time()
     best_model_wts = model.state_dict()
     best_acc = 0.0

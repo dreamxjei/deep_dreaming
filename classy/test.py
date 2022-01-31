@@ -27,6 +27,8 @@ import time
 from models import ResNet18_pretrained, ResNet50_pretrained, ResNet152_pretrained, ResNeXt101_pretrained, wide_resnet101_pretrained, inception_v3_pretrained, AlexNet_pretrained, SqueezeNet_pretrained, VGGNet_pretrained, DenseNet_pretrained, efficientnet_b7_pretrained, regnet_x_32gf_pretrained
 from dataset import read_dataset
 from test_statistics import roc_auc_metrics
+import compare_auc_delong_xu
+
 import argparse
 from sklearn import metrics
 
@@ -296,6 +298,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     )), columns=['filename', 'label', 'class_pred', 'wrong'])
     for idx in range(n_classes):
         df_all_inclusive_stats['raw_output_' + str(idx)] = all_inclusive_stats['raw_output_' + str(idx)]
+    df_all_inclusive_stats = df_all_inclusive_stats.sort_values(by=['filename'])
 
     df_all_inclusive_stats_output_path = os.path.join(results_dir, network + '_all_inclusive_stats_' + str(wf_only) + '.csv')
     df_all_inclusive_stats.to_csv(df_all_inclusive_stats_output_path, index=False)
@@ -319,7 +322,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         print('Optimal threshold:', opt_thresholds[1])
         output.write('optimal_threshold :' + str(opt_thresholds[1]) + '\n')
 
-        calc_stats(total_labels, total_preds, result_classes, n_classes, opt_thresholds, output, auc_score)
+        calc_stats(total_labels, total_preds, result_classes, n_classes, opt_thresholds, output, auc_score, all_inclusive_stats['raw_output_1'])
     
     sensitivity  = TP / (TP + FN)
     specificity  = TN / (TN + FP)
@@ -381,9 +384,10 @@ def calc_threshold(y_true, y_score):
 '''
 
 
-def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output, auc_score):
+def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output, auc_score, raw_output_1):
     labels = np.concatenate(labels)
     preds = np.concatenate(preds)
+    raw_output_1 = np.array(raw_output_1)  # for delong
     # thresh = calc_threshold(y_true, y_score)  # for f1
     thresh = opt_thresholds[1]
     # thresh = 0.5
@@ -428,6 +432,17 @@ def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output,
 
     print(str(int(ci_range*100)) + r'% Confidence Interval: ', lower, 'to', upper)
     output.write(str(int(ci_range*100)) + r'% Confidence Interval: ' + str(lower) + ' to ' + str(upper) + '\n')
+
+    # delong auc and covariance
+    auc_delong, variance_delong = compare_auc_delong_xu.delong_roc_variance(
+        labels, raw_output_1
+    )
+
+    print('DeLong AUC:', auc_delong)
+    output.write('DeLong AUC: ' + str(auc_delong) + '\n')
+
+    print('DeLong variance (class 1):', variance_delong)
+    output.write('DeLong variance (class 1): ' + str(variance_delong) + '\n')
 
 
 if __name__ == '__main__':
