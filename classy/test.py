@@ -187,6 +187,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     for idx in range(len(result_classes)):
         all_inclusive_stats['raw_output_' + str(idx)] = []
     all_inclusive_stats['wrong'] = []
+    all_inclusive_stats['softmax_prob'] = []
     
     for data in radio_data_loader:
         inputs, labels, filenames = data
@@ -281,6 +282,7 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
                 all_inclusive_stats['wrong'].append(1)
             else:
                 all_inclusive_stats['wrong'].append(0)
+            all_inclusive_stats['softmax_prob'].append(local_y_score[idx])
 
     # save wrong files to csv
     df_wrongs = pd.DataFrame(list(zip(wrong_filenames)),
@@ -294,8 +296,9 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         all_inclusive_stats['filename'],
         all_inclusive_stats['label'],
         all_inclusive_stats['class_pred'],
-        all_inclusive_stats['wrong']
-    )), columns=['filename', 'label', 'class_pred', 'wrong'])
+        all_inclusive_stats['wrong'],
+        all_inclusive_stats['softmax_prob']
+    )), columns=['filename', 'label', 'class_pred', 'wrong', 'softmax_prob'])
     for idx in range(n_classes):
         df_all_inclusive_stats['raw_output_' + str(idx)] = all_inclusive_stats['raw_output_' + str(idx)]
     df_all_inclusive_stats = df_all_inclusive_stats.sort_values(by=['filename'])
