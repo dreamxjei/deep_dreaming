@@ -106,7 +106,7 @@ def main():
             weightfile = weightslist[weightfileidx]
             if not weightfile.startswith('LOG'):  # avoid LOG.txt
                 load_file = 'weights/' + network + '_weights/' + weightfile
-                print('testing weight:',weightfile)
+                print('testing weight:', weightfile)
                 val_data_transform = transforms.Compose([
                   transforms.ToPILImage(),
                   transforms.Resize((256, 256)),
@@ -127,6 +127,7 @@ def main():
             weightfile = weightslist[weightfileidx]
             if not weightfile.startswith('LOG'):  # avoid LOG.txt
                 load_file = 'weights/inception_v3_weights/' + weightfile
+                print('testing weight:', weightfile)
                 val_data_transform = transforms.Compose([
                   transforms.ToPILImage(),
                   transforms.Resize((300, 300)),
