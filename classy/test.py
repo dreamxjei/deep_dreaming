@@ -39,8 +39,8 @@ import scipy.stats as st
 
 # name classes - for confusion matrix etc, can be different from dataloader classes
 result_classes = {
-        0: 'no_THA',
-        1: 'yes_THA',
+        0: 'no',
+        1: 'yes',
         # 2: 'yes_HRA'
     }
 
@@ -102,11 +102,13 @@ def main():
         weightslist = os.listdir('weights/' + network + '_weights/')
         weightslist.sort()
         weightsnum = len(weightslist)
+        weights_processed = 0
         for weightfileidx in range(weightsnum):
             weightfile = weightslist[weightfileidx]
             if not weightfile.startswith('LOG'):  # avoid LOG.txt
                 load_file = 'weights/' + network + '_weights/' + weightfile
-                print('testing weight:', weightfile)
+                print('testing weight', weights_processed, ':', weightfile)
+                weights_processed += 1
                 val_data_transform = transforms.Compose([
                   transforms.ToPILImage(),
                   transforms.Resize((256, 256)),
@@ -123,11 +125,13 @@ def main():
         weightslist = os.listdir('weights/inception_v3_weights/')
         weightslist.sort()
         weightsnum = len(weightslist)
+        weights_processed = 0
         for weightfileidx in range(weightsnum):
             weightfile = weightslist[weightfileidx]
             if not weightfile.startswith('LOG'):  # avoid LOG.txt
                 load_file = 'weights/inception_v3_weights/' + weightfile
-                print('testing weight:', weightfile)
+                print('testing weight', weights_processed, ':', weightfile)
+                weights_processed += 1
                 val_data_transform = transforms.Compose([
                   transforms.ToPILImage(),
                   transforms.Resize((300, 300)),
