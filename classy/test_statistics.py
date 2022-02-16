@@ -31,6 +31,8 @@ def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir
     j_stats = [None]*n_classes
     opt_jstats = [None]*n_classes
     opt_thresholds = [None]*n_classes
+    opt_tprs = [None]*n_classes
+    opt_fprs = [None]*n_classes
 
     for i in range(n_classes):
         fpr[i], tpr[i], thresholds[i] = metrics.roc_curve(y_true[:, i], y_score[:, i])
@@ -41,6 +43,8 @@ def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir
         max_j_idx = np.argmax(j_stats[i])
         opt_thresholds[i] = thresholds[i][max_j_idx]
         opt_jstats[i] = j_stats[i][max_j_idx]
+        opt_tprs[i] = tpr[i][max_j_idx]
+        opt_fprs[i] = fpr[i][max_j_idx]
 
     # # Compute micro-average ROC curve and ROC area
     # fpr["micro"], tpr["micro"], _ = metrics.roc_curve(y_test.ravel(), y_score.ravel())
@@ -63,4 +67,4 @@ def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir
 
     auc_score = metrics.roc_auc_score(y_true[:, 1], y_score[:, 1])
     # print('auc_score: ', auc_score)
-    return auc_score, opt_jstats, opt_thresholds
+    return auc_score, opt_jstats, opt_thresholds, opt_tprs, opt_fprs
