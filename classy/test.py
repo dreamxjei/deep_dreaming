@@ -168,7 +168,6 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
 
     model.train(False)
 
-    running_corrects = 0
     total = len(radio_val.sample_paths)
     print(total)
 
@@ -180,19 +179,13 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     FP = 0  # pred true, label false
     FN = 0  # pred false, label true
 
+    # total results: will append batch results to these
+    all_filenames = []
     y_true = []
     y_score = []
-    total_labels = []  # for confusion matrix - ground truth
-    total_preds = []  # for confusion matrix - preds
-    wrong_filenames = []
-    all_inclusive_stats = {}
-    all_inclusive_stats['filename'] = []
-    all_inclusive_stats['label'] = []
-    all_inclusive_stats['class_pred'] = []
-    for idx in range(len(result_classes)):
-        all_inclusive_stats['raw_output_' + str(idx)] = []
-    all_inclusive_stats['wrong'] = []
-    all_inclusive_stats['softmax_prob'] = []
+    all_raw_outputs = []
+
+    exclusive_preds = []  # for exclusive thresholding (multiclass or 0.5 binary)
     
     for data in radio_data_loader:
         inputs, labels, filenames = data
@@ -216,7 +209,6 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
             # y_score.append(local_y_score.data.cpu().numpy())
             # y_true.append(labels.data.cpu().numpy())
             local_y_score = local_y_score.clone().detach().cpu().numpy()
-            y_true.append(labels.clone().detach().cpu().numpy())
             labels_np = labels.clone().detach().cpu().numpy()
             raw_outputs_np = outputs.clone().detach().cpu().numpy()
             
@@ -224,70 +216,94 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
             # y_score.append(local_y_score.data.numpy())
             # y_true.append(labels.data.numpy())
             local_y_score = local_y_score.clone().detach().numpy()
-            y_true.append(labels.clone().detach().numpy())
             labels_np = labels.clone().detach().numpy()
             raw_outputs_np = outputs.clone().detach().numpy()
 
-        y_score.append(local_y_score)
-        total_labels.append(labels_np)
-
+        # append batch results to total
         if thresh_method == 'exclusive':
-            # for mutually exclusive tasks only. obsolete?
             _, preds = torch.max(outputs.data, 1)
-            total_preds.append(preds.clone().detach().cpu().numpy())
-            running_corrects += torch.sum(preds == labels.data)
-            preds = preds.float().cpu().numpy()
-            labels = labels.data.float().cpu().numpy()
+            iter_preds = preds.clone().detach().cpu().numpy()
 
-        if n_classes < 3 and thresh_method == 'youden':  # roc/auc for binary output
-            # call statistics file for roc/auc
-            auc_score, opt_jstats, opt_thresholds, opt_tprs, opt_fprs = roc_auc_metrics(y_true, y_score, n_classes, wf_only, network, results_dir)
-            thresh = opt_thresholds[1]
+            for i in range(len(filenames)):
+                exclusive_preds.append(iter_preds[i])
+        
+        for i in range(len(filenames)):
+            all_filenames.append(filenames[i])
+            y_score.append(local_y_score[i])
+            y_true.append(labels_np[i])
+            all_raw_outputs.append(raw_outputs_np[i])
 
-            # classify based on whether or not class 1 (yes) beats threshold
-            preds = local_y_score >= thresh  # one hot predictions
-            preds = np.argmax(preds, axis=1)  # change one hot preds to class numbers
-            total_preds.append(preds)
-            if use_gpu:
-                labels = labels.clone().detach().cpu().numpy()
-            else:
-                labels = labels.clone().detach().numpy()
+    # batch operations done. now classify based on pred score
+    y_score = np.array(y_score)
+    y_true = np.array(y_true)
 
-            running_corrects += np.sum(preds == labels)
+    running_corrects = 0
+    if thresh_method == 'exclusive':
+        # for mutually exclusive tasks only
+        y_pred = exclusive_preds
+        running_corrects = torch.sum(exclusive_preds == y_true)
+        # preds = preds.float().cpu().numpy()
+        # labels = labels.data.float().cpu().numpy()
 
-        # statistics
-        # ROC curve analysis
-        TP += np.sum(np.logical_and(preds == 1.0, labels == 1.0))
-        TN += np.sum(np.logical_and(preds == 0.0, labels == 0.0))
-        FP += np.sum(np.logical_and(preds == 1.0, labels == 0.0))
-        FN += np.sum(np.logical_and(preds == 0.0, labels == 1.0))
+    if n_classes < 3 and thresh_method == 'youden':  # roc/auc for binary output
+        # call statistics file for roc/auc
+        auc_score, opt_jstats, opt_thresholds, opt_tprs, opt_fprs = roc_auc_metrics(y_true, y_score, n_classes, wf_only, network, results_dir)
+        thresh = opt_thresholds[1]
 
-        """
-        # show incorrectly classified images
-        for idx in range(len(original)):
-          if (preds != labels.data)[idx]:
-            plt.imshow(np.transpose(original.numpy()[idx], (1,2,0)))
-            plt.show()
-            # print('here', idx)
-        """
+        # classify based on whether or not class 1 (yes) beats threshold
+        y_pred = y_score[:, 1] >= thresh
+        y_pred = list(map(int, y_pred))  # convert from boolean to int
+        # preds = local_y_score >= thresh  # one hot predictions
+        # preds = np.argmax(preds, axis=1)  # change one hot preds to class numbers
 
-        # append wrong files
-        for idx in range(len(original)):  # first dimension of tensor, usually = batch_size
-            if (preds != labels)[idx]:
-                wrong_filenames.append(filenames[idx])
+        running_corrects = np.sum(y_pred == y_true)
 
-        # append raw pred, softmax pred, and true labels for delong calculation
-        for idx in range(len(original)):  # first dimension of tensor, usually = batch_size
-            all_inclusive_stats['filename'].append(filenames[idx])
-            all_inclusive_stats['label'].append(labels[idx])
-            all_inclusive_stats['class_pred'].append(preds[idx])
-            for j in range(n_classes):
-                all_inclusive_stats['raw_output_' + str(j)].append(raw_outputs_np[idx][j])
-            if preds[idx] != labels[idx]:
-                all_inclusive_stats['wrong'].append(1)
-            else:
-                all_inclusive_stats['wrong'].append(0)
-            all_inclusive_stats['softmax_prob'].append(local_y_score[idx])
+    y_pred = np.array(y_pred)
+
+    # statistics
+    # ROC curve analysis
+    TP += np.sum(np.logical_and(y_pred == 1.0, y_true == 1.0))
+    TN += np.sum(np.logical_and(y_pred == 0.0, y_true == 0.0))
+    FP += np.sum(np.logical_and(y_pred == 1.0, y_true == 0.0))
+    FN += np.sum(np.logical_and(y_pred == 0.0, y_true == 1.0))
+
+    """
+    # show incorrectly classified images
+    for idx in range(len(original)):
+        if (preds != labels.data)[idx]:
+        plt.imshow(np.transpose(original.numpy()[idx], (1,2,0)))
+        plt.show()
+        # print('here', idx)
+    """
+    
+    wrong_filenames = []
+
+    # append wrong files
+    for idx in range(len(all_filenames)):  # first dimension of tensor, usually = batch_size
+        if (y_pred[idx] != y_true[idx]):
+            wrong_filenames.append(all_filenames[idx])
+
+    all_inclusive_stats = {}
+    all_inclusive_stats['filename'] = []
+    all_inclusive_stats['label'] = []
+    all_inclusive_stats['class_pred'] = []
+    for idx in range(len(result_classes)):
+        all_inclusive_stats['raw_output_' + str(idx)] = []
+        all_inclusive_stats['softmax_prob_' + str(idx)] = []
+    all_inclusive_stats['wrong'] = []
+
+    # append raw pred, softmax pred, and true labels for delong calculation
+    for idx in range(len(all_filenames)):  # first dimension of tensor, usually = batch_size
+        all_inclusive_stats['filename'].append(all_filenames[idx])
+        all_inclusive_stats['label'].append(y_true[idx])
+        all_inclusive_stats['class_pred'].append(y_pred[idx])
+        for j in range(n_classes):
+            all_inclusive_stats['raw_output_' + str(j)].append(all_raw_outputs[idx][j])
+            all_inclusive_stats['softmax_prob_' + str(j)].append(y_score[idx][j])
+        if y_pred[idx] != y_true[idx]:
+            all_inclusive_stats['wrong'].append(1)
+        else:
+            all_inclusive_stats['wrong'].append(0)
 
     # save wrong files to csv
     df_wrongs = pd.DataFrame(list(zip(wrong_filenames)),
@@ -302,10 +318,10 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         all_inclusive_stats['label'],
         all_inclusive_stats['class_pred'],
         all_inclusive_stats['wrong'],
-        all_inclusive_stats['softmax_prob']
-    )), columns=['filename', 'label', 'class_pred', 'wrong', 'softmax_prob'])
+    )), columns=['filename', 'label', 'class_pred', 'wrong'])
     for idx in range(n_classes):
-        df_all_inclusive_stats['raw_output_' + str(idx)] = all_inclusive_stats['raw_output_' + str(idx)]
+        # df_all_inclusive_stats['raw_output_' + str(idx)] = all_inclusive_stats['raw_output_' + str(idx)]
+        df_all_inclusive_stats['softmax_prob_' + str(idx)] = all_inclusive_stats['softmax_prob_' + str(idx)]
     df_all_inclusive_stats = df_all_inclusive_stats.sort_values(by=['filename'])
 
     df_all_inclusive_stats_output_path = os.path.join(results_dir, network + '_all_inclusive_stats_' + str(wf_only) + '.csv')
@@ -330,12 +346,12 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
         print('Optimal threshold:', opt_thresholds[1])
         output.write('optimal_threshold: ' + str(opt_thresholds[1]) + '\n')
         print('Optimal sensitivity:', opt_tprs[1])
-        output.write('optimal_sentivity: ' + str(opt_tprs[1]))
+        output.write('optimal_senstivity: ' + str(opt_tprs[1]) + '\n')
         print('Optimal specificity:', 1 - opt_fprs[1])
-        output.write('optimal_specificity: ' + str(1 - opt_fprs[1]))
+        output.write('optimal_specificity: ' + str(1 - opt_fprs[1]) + '\n')
 
-        calc_stats(total_labels, total_preds, result_classes, n_classes, opt_thresholds, output, auc_score, 
-            all_inclusive_stats['raw_output_1'], y_score)
+        calc_stats(y_true, y_pred, result_classes, n_classes, opt_thresholds, output, auc_score, 
+            all_inclusive_stats['raw_output_1'], all_inclusive_stats['softmax_prob_1'])
     
     sensitivity  = TP / (TP + FN)
     specificity  = TN / (TN + FP)
@@ -362,10 +378,9 @@ def test(use_gpu, n_classes, load_file, val_data_transform, model, weightfile, n
     print('confusion matrix:')
     confusion_labels = []
     confusion_preds = []
-    for i in range(len(total_labels)):
-        for j in range(np.shape(total_labels[i])[0]):
-            confusion_labels.append(total_labels[i][j])
-            confusion_preds.append(total_preds[i][j])
+    for i in range(len(y_true)):
+        confusion_labels.append(y_true[i])
+        confusion_preds.append(y_pred[i])
 
     conf_m = metrics.confusion_matrix(confusion_labels, confusion_preds)
     print(conf_m)
@@ -397,10 +412,8 @@ def calc_threshold(y_true, y_score):
 '''
 
 
-def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output, auc_score, raw_output_1, softmax_prob):
-    labels = np.concatenate(labels)
-    preds = np.concatenate(preds)
-    softmax_prob = np.concatenate(softmax_prob)
+def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output, auc_score, raw_output_1, softmax_c1):
+    softmax_c1 = np.array(softmax_c1)
     raw_output_1 = np.array(raw_output_1)  # for delong
     # thresh = calc_threshold(y_true, y_score)  # for f1
     thresh = opt_thresholds[1]
@@ -409,7 +422,6 @@ def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output,
     precision, recall, f_beta, _ = metrics.precision_recall_fscore_support(labels, preds, average='binary')
     print('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta))
     output.write('Accuracy: {:>2.3f}, Precision: {:>2.2f}, Recall: {:>2.2f}, f-1: {:>2.3f}'.format(accuracy, precision, recall, f_beta) + '\n')
-
     
     # confidence intervals (z= {1.64: 90%, 1.96: 95%, 2.33: 98%, 2.58: 99%})
     ci_range = 0.95
@@ -448,14 +460,6 @@ def calc_stats(labels, preds, result_classes, n_classes, opt_thresholds, output,
     output.write(str(int(ci_range*100)) + r'% Confidence Interval: ' + str(lower) + ' to ' + str(upper) + '\n')
 
     # delong auc and covariance
-    softmax_c1 = []
-    for i in range(len(softmax_prob)):
-        softmax_list_to_float = list(map(float, softmax_prob[i]))
-        softmax_c1_only = softmax_list_to_float[1]
-        softmax_c1.append(softmax_c1_only)
-
-    softmax_c1 = np.array(softmax_c1)
-
     auc_delong, variance_delong_1 = compare_auc_delong_xu.delong_roc_variance(
         labels, softmax_c1
     )

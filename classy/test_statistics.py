@@ -11,16 +11,11 @@ from sklearn import metrics
 
 
 def roc_auc_metrics(y_true, y_score, n_classes, weightfile, network, results_dir):
-    y_true = np.concatenate(y_true, 0)
-    y_true2 = np.zeros((y_true.shape[0], 2))
+    # one-hot encode truth
+    y_true2 = np.zeros((y_true.shape[0], n_classes))
     for column in range(y_true2.shape[1]):
         y_true2[:, column] = (y_true == column)
     y_true = y_true2
-
-    y_score = np.concatenate(y_score, 0)
-
-    # print(y_true)
-    # print(y_score)
 
     # Compute ROC curve and ROC area for each class
     fpr = dict()
