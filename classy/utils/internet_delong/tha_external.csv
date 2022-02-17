@@ -1,0 +1,21 @@
+filename,label,class_pred,wrong,softmax_prob,raw_output_0,raw_output_1
+dataset/test/no/100_Hip_Reduced.png,0,0,0,[0.33395523 0.6660448 ],-0.236456424,0.453893542
+dataset/test/no/10_Pelvis_Reduced.png,0,0,0,[0.99522334 0.00477673],2.730767488,-2.608443737
+dataset/test/no/11_Hip_Reduced.png,0,0,0,[0.9762853  0.02371472],2.073603153,-1.644055963
+dataset/test/no/12_Hip_Reduced.png,0,0,0,[0.94474435 0.05525568],1.500738502,-1.338204741
+dataset/test/no/13_Hip_Reduced.png,0,0,0,[0.969358   0.03064195],1.860647202,-1.593616724
+dataset/test/no/15_Pelvis_Reduced.png,0,0,0,[0.9802745  0.01972546],2.163786411,-1.74213624
+dataset/test/no/18_Pelvis_Reduced.png,0,0,0,[0.596876   0.40312397],0.407702744,0.015237391
+dataset/test/no/33_Hip_Reduced.jpg,0,1,1,[5.3188618e-04 9.9946815e-01],-3.722209692,3.816339254
+dataset/test/no/21_Hip_Reduced.png,0,0,0,[0.9981528  0.00184714],3.292051554,-3.000213861
+dataset/test/no/50_Pelvis_Reduced.png,0,1,1,[0.0638635  0.93613654],-1.259363651,1.425649643
+dataset/test/yes/11_Hip_Dislocation.png,1,1,0,[0.03451094 0.96548903],-1.60086894,1.730489373
+dataset/test/yes/16_Pelvis_Dislocation.png,1,1,0,[1.4953412e-07 9.9999988e-01],-7.789485931,7.926255226
+dataset/test/yes/17_Pelvis_Dislocation.png,1,1,0,[4.469702e-08 1.000000e+00],-8.378772736,8.544587135
+dataset/test/yes/18_Pelvis_Dislocation.png,1,1,0,[1.941466e-06 9.999981e-01],-6.409123898,6.742941856
+dataset/test/yes/42_Pelvis_Dislocation.png,1,0,1,[0.6649928  0.33500716],0.455697179,-0.229927152
+dataset/test/yes/23_Hip_Dislocation.png,1,1,0,[0.01796268 0.9820373 ],-1.956703782,2.044629574
+dataset/test/yes/27_Hip_Dislocation.png,1,1,0,[0.00129021 0.9987098 ],-3.296113014,3.35554862
+dataset/test/yes/72_Hip_Dislocation.png,1,0,1,[0.55463624 0.44536376],0.117764555,-0.101656534
+dataset/test/yes/2_Hip_Dislocation.png,1,1,0,[0.00138415 0.99861586],-3.323255062,3.258027077
+dataset/test/yes/2_Pelvis_Dislocation.png,1,1,0,[0.00361503 0.996385  ],-2.621152639,2.997880936

@@ -1,0 +1,21 @@
+filename,label,class_pred,wrong,softmax_prob_0,softmax_prob_1
+dataset/test/no/1280px-Medical_X-Ray_imaging_LQO05_nevit.jpg,0,0,0,0.9520977735519409,0.0479021780192852
+dataset/test/no/558ed582bbd990fa9a851e7148804a.jpg,0,0,0,0.9999701976776123,2.984680213558022e-05
+dataset/test/no/acromial-spur.jpg,0,0,0,0.9999765157699585,2.347364352317527e-05
+dataset/test/no/anterior-shoulder-dislocation-ultrasound (1).jpg,0,0,0,0.9985162615776062,0.0014837640337646008
+dataset/test/no/anterior-shoulder-dislocation-with-hill-sachs-lesion.png,0,0,0,0.9965686798095703,0.0034312859643250704
+dataset/test/no/cdcccd4b3bee98421ef90fc0c242c7.png,0,0,0,0.9999027252197266,9.72462585195899e-05
+dataset/test/no/english-class-x-shoulder-fig6-walking-stick-configuration-blanco.jpg,0,0,0,0.9999446868896484,5.534803131013177e-05
+dataset/test/no/export--64900525.jpg,0,0,0,0.9988534450531006,0.0011465088464319706
+dataset/test/no/export--68704534.jpg,0,0,0,0.998381495475769,0.0016185397980734706
+dataset/test/no/inferior-shoulder-dislocation.jpg,0,0,0,0.9994823932647705,0.0005175638943910599
+dataset/test/yes/anterior-glenohumeral-dislocation-with-hill-sachs-lesion.JPG,1,1,0,0.000294865487376228,0.9997051358222961
+dataset/test/yes/anterior-shoulder-dislocation-17.bmp,1,1,0,5.751908247475512e-05,0.999942421913147
+dataset/test/yes/anterior-shoulder-dislocation-23_a.jpg,1,1,0,0.0056351604871451855,0.994364857673645
+dataset/test/yes/anterior-shoulder-dislocation-5.jpg,1,1,0,0.0021629375405609608,0.9978371262550354
+dataset/test/yes/bilateral-anterior-shoulder-dislocations-post-seizure.JPG,1,1,0,0.03404320776462555,0.9659567475318909
+dataset/test/yes/bilateral-anterior-shoulder-fracture-dislocations_a.png,1,1,0,0.0007885562954470515,0.9992114305496216
+dataset/test/yes/inferior-shoulder-dislocation (1).jpg,1,1,0,0.0011297259479761124,0.9988701939582825
+dataset/test/yes/inferior-subluxation-of-the-humerus.jpg,1,1,0,0.01379011757671833,0.9862099289894104
+dataset/test/yes/shoulder-fracture-dislocation-with-arterial-dissection.png,1,1,0,9.71633107837988e-06,0.9999902248382568
+dataset/test/yes/shoulder-fracture-dislocation-with-lipohaemarthrosis.jpg,1,1,0,2.688696804398205e-05,0.9999730587005615
