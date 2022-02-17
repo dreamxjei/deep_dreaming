@@ -53,7 +53,7 @@ class read_dataset(Dataset):
         shape = x.shape
         if len(shape) == 3 and shape[2] > 3: # for cases (x, y, 4)
             x = x[:,:,:3]  # for JHU scoliosis images, originally 3 which is blank
-            x = color.gray2rgb(x)
+            # x = color.gray2rgb(x)
         elif len(shape) == 2: # for cases (x, y)
             x = color.gray2rgb(x)
 
