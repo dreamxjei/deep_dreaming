@@ -25,7 +25,7 @@ result_classes = {
 n_classes = len(result_classes)
 
 ###  output directories
-output_dir = os.path.join('cam', results)
+output_dir = os.path.join('cam', 'results')
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -78,12 +78,13 @@ elif network == 'regnet_x_32gf':
     finalconv_name = 'block4'
 
 # load weight and network
-netweight_dir = network + 'weights'
+netweight_dir = network + '_weights'
 weightslist = os.listdir(os.path.join('weights', netweight_dir))
 weightsnum = len(weightslist) - 1
 if weightslist[weightsnum].startswith('LOG'):  # avoid LOG.txt
     weightsnum = weightsnum - 1
-load_file = os.path.join('weights', netweight_dir, weightslist[weightsnum]
+load_file = os.path.join('weights', netweight_dir, weightslist[weightsnum])
+net = model  # will rename everything at some point
 net.load_state_dict(torch.load(os.path.join('./', load_file)))
 net.eval()
 
@@ -167,7 +168,10 @@ image_url = 'cam'
 samples = os.listdir(image_url)
 for sample in samples:
 
-    if sample.startswith('.'): # avoid .DS_Store
+    if sample.startswith('.'):  # avoid .DS_Store
+        continue
+
+    if os.path.isdir(os.path.join(image_url, sample)):  # ignore directories
         continue
     
     print('processing',sample)
