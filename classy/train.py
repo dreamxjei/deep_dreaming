@@ -199,7 +199,6 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':
-                scheduler.step()
                 model.train(True)  # Set model to training mode
             else:
                 model.train(False)  # Set model to evaluate mode
@@ -244,7 +243,6 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
                     optimizer.step()
 
                 # statistics
-                # print(loss.data.item()) Debugging loss.data[0]
                 running_loss += loss.data.item()  # Added tensor.item to convert to Python scalar
                 running_corrects += torch.sum(preds == labels.data)
 
@@ -253,19 +251,21 @@ def train_model(model, criterion, optimizer, scheduler, network, num_epochs=num_
                                                                                   phase,
                                                                                   running_loss / count,
                                                                                   phase,
-                                                                                  running_corrects // (  # mxj changed this to // for new pytorch
-                                                                                          count * batch_size)),
+                                                                                  torch.div(running_corrects, count*batch_size, rounding_mode='floor')),
                       end='\r')
                 output.write('{:d}/{:d}:  {:s}_loss: {:.3f}, {:s}_acc: {:.3f} \r'.format(batch_size * count,
                                                                                   batch_size * dataset_size,
                                                                                   phase,
                                                                                   running_loss / count,
                                                                                   phase,
-                                                                                  running_corrects // (  # mxj same deal as line 245
-                                                                                          count * batch_size))
+                                                                                  torch.div(running_corrects, count*batch_size, rounding_mode='floor'))
                              )
                 sys.stdout.flush()
 
+            # scheduler used to be before model.train(True) at beginning of this for loop. moved here for pytorch 1.1.0 (put after optimizer)
+            if phase == 'train':
+                scheduler.step()
+            
             epoch_loss = running_loss / dataset_size
             epoch_acc = float(running_corrects) / (count * batch_size)
 
